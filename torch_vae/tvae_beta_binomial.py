@@ -17,7 +17,7 @@ def beta_binomial_log_pdf(k, n, alpha, beta):
 
 
 class BetaBinomialVAE(nn.Module):
-    def __init__(self, hidden_dim=200, latent_dim=50):
+    def __init__(self, hidden_dim=200, latent_dim=50, batch_size=100):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.latent_dim = latent_dim
@@ -25,6 +25,7 @@ class BetaBinomialVAE(nn.Module):
         self.register_buffer('prior_mean', torch.zeros(1))
         self.register_buffer('prior_std', torch.ones(1))
         self.register_buffer('n', torch.ones(100, 784) * 255.)
+        self.n_ = torch.ones(batch_size, 784) * 255.
 
         self.fc1 = nn.Linear(784, self.hidden_dim)
         self.bn1 = nn.BatchNorm1d(self.hidden_dim)
@@ -52,7 +53,7 @@ class BetaBinomialVAE(nn.Module):
             return mu
 
     def decode(self, z):
-        h = F.relu(self.bn3(self.fc3(z)))
+        h = F.relu(self.bn3(self.fc3(z.float())))
         h = self.fc4(h)
         log_alpha, log_beta = torch.split(h, 784, dim=1)
         return torch.exp(log_alpha), torch.exp(log_beta)
@@ -62,7 +63,7 @@ class BetaBinomialVAE(nn.Module):
         z = self.reparameterize(z_mu, z_std)  # sample zs
 
         x_alpha, x_beta = self.decode(z)
-        l = beta_binomial_log_pdf(x.view(-1, 784), self.n,
+        l = beta_binomial_log_pdf(x.view(-1, 784), self.n_,
                                   x_alpha, x_beta)
         l = torch.sum(l, dim=1)
         p_z = torch.sum(Normal(self.prior_mean, self.prior_std).log_prob(z), dim=1)
