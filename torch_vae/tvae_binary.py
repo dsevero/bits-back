@@ -36,7 +36,7 @@ class BinaryVAE(nn.Module):
 
     def decode(self, z):
         """Take a z and output a probability (ie Bernoulli param) on each dim"""
-        h3 = F.relu(self.fc3(z))
+        h3 = F.relu(self.fc3(z.float()))
         return self.sigmoid(self.fc4(h3))
 
     def loss(self, x):

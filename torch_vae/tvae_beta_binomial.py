@@ -46,7 +46,7 @@ class BetaBinomialVAE(nn.Module):
         return self.bn21(self.fc21(h)), torch.exp(self.bn22(self.fc22(h)))
 
     def reparameterize(self, mu, std):
-        if self.training:
+        if self.training or self.compressing:
             eps = torch.randn_like(std)
             return eps.mul(std).add_(mu)
         else:
