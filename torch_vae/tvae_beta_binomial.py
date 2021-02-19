@@ -5,6 +5,7 @@ from torch.nn import functional as F
 from torchvision import datasets, transforms
 from torch.distributions import Normal, Categorical, Beta, Binomial
 from torchvision.utils import save_image
+from functools import lru_cache
 import numpy as np
 
 torch.manual_seed(17)
@@ -16,6 +17,11 @@ def beta_binomial_log_pdf(k, n, alpha, beta):
     return numer - denom
 
 
+@lru_cache()
+def make_ones_tensor(n):
+    return torch.ones(n, 784) * 255.
+
+
 class BetaBinomialVAE(nn.Module):
     def __init__(self, hidden_dim=200, latent_dim=50, batch_size=100):
         super().__init__()
@@ -25,7 +31,7 @@ class BetaBinomialVAE(nn.Module):
         self.register_buffer('prior_mean', torch.zeros(1))
         self.register_buffer('prior_std', torch.ones(1))
         self.register_buffer('n', torch.ones(100, 784) * 255.)
-        self.n_ = torch.ones(batch_size, 784) * 255.
+        self.n_ = make_ones_tensor(batch_size)
 
         self.fc1 = nn.Linear(784, self.hidden_dim)
         self.bn1 = nn.BatchNorm1d(self.hidden_dim)
@@ -59,11 +65,12 @@ class BetaBinomialVAE(nn.Module):
         return torch.exp(log_alpha), torch.exp(log_beta)
 
     def loss(self, x):
+        n = make_ones_tensor(x.shape[0])
         z_mu, z_std = self.encode(x.view(-1, 784))
         z = self.reparameterize(z_mu, z_std)  # sample zs
 
         x_alpha, x_beta = self.decode(z)
-        l = beta_binomial_log_pdf(x.view(-1, 784), self.n_,
+        l = beta_binomial_log_pdf(x.view(-1, 784), n,
                                   x_alpha, x_beta)
         l = torch.sum(l, dim=1)
         p_z = torch.sum(Normal(self.prior_mean, self.prior_std).log_prob(z), dim=1)

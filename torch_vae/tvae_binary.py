@@ -28,7 +28,7 @@ class BinaryVAE(nn.Module):
         return self.fc21(h1), torch.exp(self.fc22(h1))
 
     def reparameterize(self, mu, std):
-        if self.training:
+        if self.training or self.compressing:
             eps = torch.randn_like(std)
             return eps.mul(std).add_(mu)
         else:
